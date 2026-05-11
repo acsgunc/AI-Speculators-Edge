@@ -91,7 +91,7 @@ def _render_table(df: pd.DataFrame) -> None:
         display_df.style
         .apply(_color_row, axis=1)
         .format(fmt)
-        .format({"Percentage (%)"}, formatter=_fmt_pct)
+        .format(subset=["Percentage (%)"], formatter=_fmt_pct)
     )
     st.dataframe(styled, use_container_width=True, hide_index=True, height=600)
 
