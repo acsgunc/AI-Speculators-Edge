@@ -12,13 +12,27 @@ class UserInput:
 
 @dataclass
 class FilterOptions:
-    search_pct: int | None
+    search_pct: float | None
     show_dips: bool
     show_highs: bool
+    custom_pct: float | None
 
 
 def render_sidebar() -> FilterOptions:
     with st.sidebar:
+        st.header("Custom Tier")
+        custom_raw = st.number_input(
+            "Add Custom Percentage (%)",
+            min_value=-100.0,
+            max_value=500.0,
+            value=0.0,
+            step=0.5,
+            format="%.1f",
+            help="Inject a specific percentage (e.g. 13.5) into the table and chart.",
+        )
+        custom_pct = custom_raw if custom_raw != 0.0 else None
+
+        st.markdown("---")
         st.header("Filters")
 
         raw = st.text_input(
@@ -26,9 +40,11 @@ def render_sidebar() -> FilterOptions:
             placeholder="e.g. 155",
             help="Enter a percentage value to highlight that row.",
         ).strip()
-        search_pct = int(raw) if raw.lstrip('-').isdigit() else None
+        try:
+            search_pct = float(raw) if raw else None
+        except ValueError:
+            search_pct = None
 
-        st.markdown("---")
         show_dips = st.checkbox("Show Dips (negative %)", value=True)
         show_highs = st.checkbox("Show Highs (positive %)", value=True)
 
@@ -36,6 +52,7 @@ def render_sidebar() -> FilterOptions:
         search_pct=search_pct,
         show_dips=show_dips,
         show_highs=show_highs,
+        custom_pct=custom_pct,
     )
 
 

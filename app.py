@@ -34,5 +34,5 @@ else:
     st.stop()
 
 # --- Compute & render ---
-df = build_threshold_df(base_price, PCT_RANGE)
+df = build_threshold_df(base_price, PCT_RANGE, custom_pct=filters.custom_pct)
 render_results(base_price, source_label, df, filters)
