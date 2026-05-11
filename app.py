@@ -17,20 +17,25 @@ if not user_input.submitted:
     st.stop()
 
 # --- Resolve base price ---
-if not user_input.ticker:
-    st.warning("Please enter a stock ticker.")
+if user_input.manual_price > 0:
+    base_price = user_input.manual_price
+    source_label = "Manual Input"
+elif user_input.ticker:
+    with st.spinner(f"Fetching data for **{user_input.ticker}**..."):
+        try:
+            result = fetch_last_price(user_input.ticker)
+            base_price = result.price
+            source_label = result.label
+        except PriceFetchError as e:
+            st.error(str(e))
+            st.stop()
+else:
+    st.warning("Please enter a stock ticker or a manual base price.")
     st.stop()
-
-with st.spinner(f"Fetching data for **{user_input.ticker}**..."):
-    try:
-        result = fetch_last_price(user_input.ticker)
-    except PriceFetchError as e:
-        st.error(str(e))
-        st.stop()
 
 # --- Build percentage list ---
 percentages = sorted(set(STANDARD_PERCENTAGES) | ({user_input.custom_pct} if user_input.custom_pct else set()))
 
 # --- Compute & render ---
-buy_targets, sell_targets = compute_thresholds(result.price, percentages)
-render_results(result.price, result.label, buy_targets, sell_targets)
+buy_targets, sell_targets = compute_thresholds(base_price, percentages)
+render_results(base_price, source_label, buy_targets, sell_targets)
