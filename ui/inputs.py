@@ -8,25 +8,38 @@ class UserInput:
     ticker: str
     manual_price: float
     submitted: bool
-    custom_pct: float | None = None
 
 
-def render_sidebar() -> float | None:
+@dataclass
+class FilterOptions:
+    search_pct: int | None
+    show_dips: bool
+    show_highs: bool
+
+
+def render_sidebar() -> FilterOptions:
     with st.sidebar:
-        st.header("Custom Target")
-        raw = st.number_input(
-            "Custom Percentage (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=0.0,
-            step=0.5,
-            format="%.1f",
-            help="Add an extra dip/high level (e.g. 15). Set to 0 to skip.",
-        )
-        return raw if raw > 0 else None
+        st.header("Filters")
+
+        raw = st.text_input(
+            "Jump to Percentage (%)",
+            placeholder="e.g. 155",
+            help="Enter a percentage value to highlight that row.",
+        ).strip()
+        search_pct = int(raw) if raw.lstrip('-').isdigit() else None
+
+        st.markdown("---")
+        show_dips = st.checkbox("Show Dips (negative %)", value=True)
+        show_highs = st.checkbox("Show Highs (positive %)", value=True)
+
+    return FilterOptions(
+        search_pct=search_pct,
+        show_dips=show_dips,
+        show_highs=show_highs,
+    )
 
 
-def render_inputs() -> UserInput:
+def render_inputs() -> tuple[UserInput, FilterOptions]:
     col1, col2 = st.columns(2)
 
     with col1:
@@ -43,11 +56,9 @@ def render_inputs() -> UserInput:
         )
 
     submitted = st.button("Fetch Current Price", type="primary", use_container_width=True)
-    custom_pct = render_sidebar()
+    filters = render_sidebar()
 
-    return UserInput(
-        ticker=ticker,
-        manual_price=manual_price,
-        submitted=submitted,
-        custom_pct=custom_pct,
+    return (
+        UserInput(ticker=ticker, manual_price=manual_price, submitted=submitted),
+        filters,
     )
