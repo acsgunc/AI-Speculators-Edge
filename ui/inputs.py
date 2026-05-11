@@ -2,45 +2,36 @@ from dataclasses import dataclass
 
 import streamlit as st
 
-from config import DEFAULT_PERCENTAGES
-
 
 @dataclass
 class UserInput:
     ticker: str
-    manual_price: float
-    custom_pcts: str
     submitted: bool
+    custom_pct: float | None = None
+
+
+def render_sidebar() -> float | None:
+    with st.sidebar:
+        st.header("Custom Target")
+        raw = st.number_input(
+            "Custom Percentage (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=0.0,
+            step=0.5,
+            format="%.1f",
+            help="Add an extra dip/high level (e.g. 15). Set to 0 to skip.",
+        )
+        return raw if raw > 0 else None
 
 
 def render_inputs() -> UserInput:
-    st.header("Input")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        ticker = st.text_input("Stock Ticker", placeholder="e.g. AAPL, TSLA").strip().upper()
-
-    with col2:
-        manual_price = st.number_input(
-            "Manual Base Price (optional, overrides ticker)",
-            min_value=0.0,
-            value=0.0,
-            step=0.01,
-            format="%.2f",
-        )
-
-    custom_pcts = st.text_input(
-        "Custom Percentages (comma-separated)",
-        value=DEFAULT_PERCENTAGES,
-        help="Enter percentage values separated by commas, e.g. 5, 10, 15, 20",
-    )
-
-    submitted = st.button("Calculate", type="primary", use_container_width=True)
+    ticker = st.text_input("Stock Ticker", placeholder="e.g. AAPL, TSLA").strip().upper()
+    submitted = st.button("Fetch Current Price", type="primary", use_container_width=True)
+    custom_pct = render_sidebar()
 
     return UserInput(
         ticker=ticker,
-        manual_price=manual_price,
-        custom_pcts=custom_pcts,
         submitted=submitted,
+        custom_pct=custom_pct,
     )
