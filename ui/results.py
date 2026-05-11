@@ -48,9 +48,10 @@ def render_results(
         filtered.style
         .apply(_color_row, axis=1)
         .format({
+            "Percentage (%)": "{:+d}%",
+            "Multiplier": "{:.2f}x",
             "Price Change ($)": "${:,.2f}",
             "Target Price ($)": "${:,.2f}",
-            "Percentage (%)": "{:+d}%",
         })
     )
     st.dataframe(styled, use_container_width=True, hide_index=True, height=600)
