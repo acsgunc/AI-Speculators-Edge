@@ -24,12 +24,14 @@ def _resolve_targets(
     step_size: float | None = None,
 ) -> list[float]:
     if step_size is not None and step_size > 0:
+        # Generate multiples of step_size from step_size up to entry_price
         targets: list[float] = []
-        price = pos.entry_price - step_size
-        while price > pos.market_price:
-            targets.append(round(price, 2))
-            price -= step_size
-        return targets  # already descending
+        price = step_size
+        while price < pos.entry_price:
+            if price > pos.market_price:
+                targets.append(round(price, 2))
+            price = round(price + step_size, 10)
+        return sorted(targets, reverse=True)
 
     defaults = sorted(
         {t for t in DEFAULT_TARGETS if pos.market_price < t < pos.entry_price},
