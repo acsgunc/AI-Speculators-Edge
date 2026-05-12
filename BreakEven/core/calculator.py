@@ -22,10 +22,22 @@ def compute_price_tiers(base_price: float) -> list[PriceTier]:
 def _resolve_targets(
     pos: PositionInput,
     step_size: float | None = None,
+    step_pct: float | None = None,
 ) -> list[float]:
-    if step_size is not None and step_size > 0:
-        # Generate multiples of step_size from step_size up to entry_price
+    # Percentage-based stepping: e.g. 1% → targets at 1%, 2%, … of entry
+    if step_pct is not None and step_pct > 0:
         targets: list[float] = []
+        pct = step_pct
+        while pct < 100:
+            price = round(pos.entry_price * pct / 100, 2)
+            if price > pos.market_price:
+                targets.append(price)
+            pct = round(pct + step_pct, 10)
+        return sorted(targets, reverse=True)
+
+    # Absolute-value stepping
+    if step_size is not None and step_size > 0:
+        targets = []
         price = step_size
         while price < pos.entry_price:
             if price > pos.market_price:
@@ -54,9 +66,10 @@ def _resolve_targets(
 def compute_average_down(
     pos: PositionInput,
     step_size: float | None = None,
+    step_pct: float | None = None,
 ) -> list[AverageDownRow]:
     rows: list[AverageDownRow] = []
-    for target_avg in _resolve_targets(pos, step_size):
+    for target_avg in _resolve_targets(pos, step_size, step_pct):
         denom = target_avg - pos.market_price
         if denom <= 0:
             continue

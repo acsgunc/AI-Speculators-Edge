@@ -20,13 +20,13 @@ def render() -> SidebarResult:
 
     input_mode = st.sidebar.radio(
         "Price Source",
-        ["Stock Ticker (Live)", "Manual Base Price"],
+        ["Manual Base Price", "Stock Ticker (Live)"],
         horizontal=True,
     )
 
-    if input_mode == "Stock Ticker (Live)":
-        return _ticker_mode()
-    return _manual_mode()
+    if input_mode == "Manual Base Price":
+        return _manual_mode()
+    return _ticker_mode()
 
 
 def _ticker_mode() -> SidebarResult:

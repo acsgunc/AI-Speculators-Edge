@@ -32,15 +32,32 @@ def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
             format="%.2f",
         )
     with c4:
-        step_size = st.number_input(
-            "Target Step Size ($)",
-            min_value=0.0,
-            value=0.0,
-            step=1.0,
-            format="%.2f",
-            help="Custom step between target averages. Leave 0 for auto.",
+        step_mode = st.radio(
+            "Step Mode",
+            ["Auto", "Dollar ($)", "Percent (%)"],
+            horizontal=True,
+            help="Choose how target average prices are spaced.",
         )
-        step_size = step_size if step_size > 0 else None
+        step_size = None
+        step_pct = None
+        if step_mode == "Dollar ($)":
+            raw = st.number_input(
+                "Step Size ($)",
+                min_value=0.01,
+                value=25.0,
+                step=0.5,
+                format="%.2f",
+            )
+            step_size = raw
+        elif step_mode == "Percent (%)":
+            raw = st.number_input(
+                "Step Size (%)",
+                min_value=0.01,
+                value=1.0,
+                step=0.5,
+                format="%.2f",
+            )
+            step_pct = raw
 
     pos = PositionInput(
         entry_price=entry_price,
@@ -54,7 +71,7 @@ def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
             st.error(e)
         return None, errors
 
-    rows = compute_average_down(pos, step_size=step_size)
+    rows = compute_average_down(pos, step_size=step_size, step_pct=step_pct)
     if not rows:
         st.info(
             "No valid average-down targets could be computed with the current inputs. "
