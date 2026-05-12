@@ -19,13 +19,24 @@ def compute_price_tiers(base_price: float) -> list[PriceTier]:
     ]
 
 
-def _resolve_targets(pos: PositionInput) -> list[float]:
-    targets = sorted(
+def _resolve_targets(
+    pos: PositionInput,
+    step_size: float | None = None,
+) -> list[float]:
+    if step_size is not None and step_size > 0:
+        targets: list[float] = []
+        price = pos.entry_price - step_size
+        while price > pos.market_price:
+            targets.append(round(price, 2))
+            price -= step_size
+        return targets  # already descending
+
+    defaults = sorted(
         {t for t in DEFAULT_TARGETS if pos.market_price < t < pos.entry_price},
         reverse=True,
     )
-    if len(targets) >= 3:
-        return targets
+    if len(defaults) >= 3:
+        return defaults
 
     step = max(1, round((pos.entry_price - pos.market_price) / DYNAMIC_STEPS, 2))
     return sorted(
@@ -38,9 +49,12 @@ def _resolve_targets(pos: PositionInput) -> list[float]:
     )
 
 
-def compute_average_down(pos: PositionInput) -> list[AverageDownRow]:
+def compute_average_down(
+    pos: PositionInput,
+    step_size: float | None = None,
+) -> list[AverageDownRow]:
     rows: list[AverageDownRow] = []
-    for target_avg in _resolve_targets(pos):
+    for target_avg in _resolve_targets(pos, step_size):
         denom = target_avg - pos.market_price
         if denom <= 0:
             continue

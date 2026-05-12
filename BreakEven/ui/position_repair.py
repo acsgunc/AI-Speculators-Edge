@@ -14,7 +14,7 @@ from ui.theme import COLOR_DANGER
 def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
     st.header("🛠️ Position Repair — Average Down Calculator")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         entry_price = st.number_input(
             "Entry Price ($)", min_value=0.01, value=300.0, step=0.01, format="%.2f"
@@ -31,6 +31,16 @@ def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
             step=0.01,
             format="%.2f",
         )
+    with c4:
+        step_size = st.number_input(
+            "Target Step Size ($)",
+            min_value=0.0,
+            value=0.0,
+            step=1.0,
+            format="%.2f",
+            help="Custom step between target averages. Leave 0 for auto.",
+        )
+        step_size = step_size if step_size > 0 else None
 
     pos = PositionInput(
         entry_price=entry_price,
@@ -44,7 +54,7 @@ def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
             st.error(e)
         return None, errors
 
-    rows = compute_average_down(pos)
+    rows = compute_average_down(pos, step_size=step_size)
     if not rows:
         st.info(
             "No valid average-down targets could be computed with the current inputs. "
@@ -69,7 +79,7 @@ def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
 
 
 def _render_metrics(pos: PositionInput) -> None:
-    m1, m2, m3 = st.columns(3)
+    m1, m2, m3, m4 = st.columns(4)
     with m1:
         _card(f"${pos.entry_price:,.2f}", "Original Entry")
     with m2:
@@ -77,7 +87,13 @@ def _render_metrics(pos: PositionInput) -> None:
     with m3:
         _card(
             f"{pos.unrealised_pnl_pct}%",
-            "Unrealised P&L",
+            "Unrealised P&L (%)",
+            value_color=COLOR_DANGER,
+        )
+    with m4:
+        _card(
+            f"${pos.unrealised_pnl_value:,.2f}",
+            "Unrealised P&L ($)",
             value_color=COLOR_DANGER,
         )
 

@@ -48,3 +48,9 @@ class PositionInput:
         return round(
             (self.market_price - self.entry_price) / self.entry_price * 100, 1
         )
+
+    @property
+    def unrealised_pnl_value(self) -> float:
+        return round(
+            (self.market_price - self.entry_price) * self.current_qty, 2
+        )
