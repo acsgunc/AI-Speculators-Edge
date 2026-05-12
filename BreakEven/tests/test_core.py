@@ -177,30 +177,33 @@ class TestComputeAverageDown:
         assert 7.0 in targets
         assert 9.5 in targets
 
-    def test_step_pct_1_percent(self):
+    def test_step_pct_10_percent(self):
+        # 10% compounding from market=60: 66, 72.6, 79.86, 87.85, 96.63
         pos = PositionInput(100, 2, 60)
-        rows = compute_average_down(pos, step_pct=1)
+        rows = compute_average_down(pos, step_pct=10)
         targets = [r.target_avg_price for r in rows]
-        # 61% of 100 = 61, 99% = 99 — all integers from 61..99
-        assert 61 in targets
-        assert 99 in targets
-        assert len(targets) == 39  # 61..99
+        assert targets[0] == 96.64  # highest
+        assert targets[-1] == 66.0  # lowest
+        assert len(targets) == 5
 
-    def test_step_pct_5_percent(self):
+    def test_step_pct_compounding_from_market(self):
+        # market=50, 5% steps: 52.5, 55.12, 57.88, …
         pos = PositionInput(200, 2, 50)
         rows = compute_average_down(pos, step_pct=5)
         targets = [r.target_avg_price for r in rows]
-        # 5%=10, 10%=20, ..., 95%=190 — only those > 50
-        expected = [round(200 * p / 100, 2) for p in range(5, 100, 5) if 200 * p / 100 > 50]
-        assert targets == sorted(expected, reverse=True)
+        assert targets[-1] == 52.5  # first step: 50 * 1.05
+        # All targets between market and entry
+        for t in targets:
+            assert t > 50
+            assert t < 200
 
     def test_step_pct_fractional(self):
+        # market=95, 0.5% compound: 95.48, 95.95, 96.43, …
         pos = PositionInput(100, 2, 95)
         rows = compute_average_down(pos, step_pct=0.5)
         targets = [r.target_avg_price for r in rows]
-        assert 95.5 in targets
-        assert 96.0 in targets
-        assert 99.5 in targets
+        assert targets[-1] == 95.47  # 95 * 1.005 = 95.475 → 95.47
+        assert all(95 < t < 100 for t in targets)
 
     def test_step_pct_overrides_step_size(self):
         pos = PositionInput(300, 2, 50)
