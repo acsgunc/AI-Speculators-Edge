@@ -24,15 +24,15 @@ def _resolve_targets(
     step_size: float | None = None,
     step_pct: float | None = None,
 ) -> list[float]:
-    # Percentage-based stepping: e.g. 1% → targets at 1%, 2%, … of entry
+    # Percentage-based stepping: compound from market price upward
+    # e.g. market=60, 10% → 66, 72.6, 79.86, … until entry price
     if step_pct is not None and step_pct > 0:
         targets: list[float] = []
-        pct = step_pct
-        while pct < 100:
-            price = round(pos.entry_price * pct / 100, 2)
-            if price > pos.market_price:
-                targets.append(price)
-            pct = round(pct + step_pct, 10)
+        multiplier = 1 + step_pct / 100
+        price = round(pos.market_price * multiplier, 2)
+        while price < pos.entry_price:
+            targets.append(price)
+            price = round(price * multiplier, 2)
         return sorted(targets, reverse=True)
 
     # Absolute-value stepping

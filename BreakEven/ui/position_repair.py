@@ -41,23 +41,23 @@ def render(ticker_name: str) -> tuple[pd.DataFrame | None, list[str]]:
         step_size = None
         step_pct = None
         if step_mode == "Dollar ($)":
-            raw = st.number_input(
+            step_size = st.number_input(
                 "Step Size ($)",
                 min_value=0.01,
                 value=25.0,
                 step=0.5,
                 format="%.2f",
+                key="step_dollar",
             )
-            step_size = raw
         elif step_mode == "Percent (%)":
-            raw = st.number_input(
+            step_pct = st.number_input(
                 "Step Size (%)",
                 min_value=0.01,
                 value=1.0,
                 step=0.5,
                 format="%.2f",
+                key="step_pct",
             )
-            step_pct = raw
 
     pos = PositionInput(
         entry_price=entry_price,
