@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background-color: #0b0e11;
+  color: #e6e8ea;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Smooth colour transitions for the flashing ticker bar. */
+.flash-transition {
+  transition:
+    background-color 220ms ease,
+    color 220ms ease;
+}

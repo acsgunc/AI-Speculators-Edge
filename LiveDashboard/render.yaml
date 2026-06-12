@@ -1,0 +1,21 @@
+# Render Blueprint: one-click deploy of the unified service.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: live-trading-dashboard
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: RELOAD
+        value: "0"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: FRONTEND_DIST
+        value: /app/frontend/dist/live-dashboard/browser
+      - key: POLL_INTERVAL_SECONDS
+        value: "5"
