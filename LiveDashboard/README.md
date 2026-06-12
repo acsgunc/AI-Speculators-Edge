@@ -9,6 +9,10 @@ required.
 - **Backend:** FastAPI · Uvicorn · native WebSockets · async HTTP
 - **Data (key-free):** Hyperliquid public WebSocket (crypto) · `yfinance` (Indian stocks)
 
+> 📚 **Full documentation** lives in [`docs/`](docs/README.md) — architecture,
+> backend/frontend internals, API reference, configuration, deployment, and a
+> guide to adding new data providers.
+
 ---
 
 ## Project structure
