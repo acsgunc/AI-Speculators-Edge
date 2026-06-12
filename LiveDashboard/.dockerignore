@@ -1,0 +1,10 @@
+# Build context exclusions for the unified Docker image.
+**/node_modules
+**/.angular
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.env
+.git
+*.md
