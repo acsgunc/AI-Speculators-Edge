@@ -54,7 +54,7 @@ export class Dashboard {
       .pipe(takeUntilDestroyed())
       .subscribe({
         next: (groups) => this.symbolGroups.set(groups),
-        error: () => this.symbolGroups.set({ crypto: [], indian_stock: [] }),
+        error: () => this.symbolGroups.set({ crypto: [], indian_stock: [], us_stock: [] }),
       });
   }
 

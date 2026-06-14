@@ -76,7 +76,11 @@ export class ChartPane {
   protected readonly label = computed(() => {
     const groups = this.symbolGroups();
     const symbol = this.pane().symbol;
-    const all = [...(groups?.crypto ?? []), ...(groups?.indian_stock ?? [])];
+    const all = [
+      ...(groups?.crypto ?? []),
+      ...(groups?.indian_stock ?? []),
+      ...(groups?.us_stock ?? []),
+    ];
     return all.find((s) => s.symbol === symbol)?.label ?? symbol;
   });
 

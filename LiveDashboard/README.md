@@ -2,16 +2,18 @@
 
 A local-first, configurable **split-screen live trading dashboard**. Display 1–8
 independent charts, each with its own symbol and timeframe, streaming live prices
-over WebSockets (crypto) and async HTTP polling (Indian equities). No API keys
-required.
+over WebSockets (crypto) and async HTTP polling (stocks). No API keys required.
 
 - **Frontend:** Angular 21 (standalone, signals) · Tailwind CSS · TradingView Lightweight Charts
 - **Backend:** FastAPI · Uvicorn · native WebSockets · async HTTP
-- **Data (key-free):** Hyperliquid public WebSocket (crypto) · `yfinance` (Indian stocks)
+- **Data (key-free):** Hyperliquid public WebSocket (crypto) · `yfinance` (Indian stocks & US stocks)
+- **Supported Assets:** 8 crypto · 8 Indian equities · 13 US stocks
 
 > 📚 **Full documentation** lives in [`docs/`](docs/README.md) — architecture,
 > backend/frontend internals, API reference, configuration, deployment, and a
 > guide to adding new data providers.
+>
+> 🇺🇸 **NEW:** Full US stock support! See [`SOLUTION-SUMMARY.md`](SOLUTION-SUMMARY.md) for recent fixes.
 
 ---
 

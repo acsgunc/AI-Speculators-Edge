@@ -6,7 +6,7 @@
  */
 
 /** High level asset grouping used by the symbol selector. */
-export type AssetClass = 'crypto' | 'indian_stock';
+export type AssetClass = 'crypto' | 'indian_stock' | 'us_stock';
 
 /** A single OHLCV candle. `time` is a UNIX timestamp in seconds. */
 export interface Candle {
@@ -30,6 +30,7 @@ export interface SymbolInfo {
 export interface SymbolGroups {
   crypto: SymbolInfo[];
   indian_stock: SymbolInfo[];
+  us_stock: SymbolInfo[];
 }
 
 /** `/api/history` response payload. */
