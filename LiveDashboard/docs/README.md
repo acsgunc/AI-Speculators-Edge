@@ -17,10 +17,12 @@ key-free, configurable split-screen live charting application.
 | [08 — Deployment](08-deployment.md) | Docker, Render, Railway, Fly.io, Hugging Face Spaces. |
 | [09 — Extending: New Data Sources](09-extending-data-sources.md) | Step-by-step guide to plug in a new provider. |
 | [10 — Troubleshooting](10-troubleshooting.md) | Common issues, causes, and fixes. |
+| [11 — macOS Local Setup](11-macos-local-setup.md) | Exhaustive MacBook walkthrough from a clean machine. |
 
 ## Quick links
 
 - **Run locally:** [07 — Local Development](07-development.md)
+- **Run on a MacBook (full step-by-step):** [11 — macOS Setup](11-macos-local-setup.md)
 - **Add Binance / Alpaca / Zerodha:** [09 — Extending](09-extending-data-sources.md)
 - **Deploy free:** [08 — Deployment](08-deployment.md)
 - **API contract:** [05 — API Reference](05-api-reference.md)
