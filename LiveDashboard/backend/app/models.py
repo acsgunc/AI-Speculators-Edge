@@ -18,6 +18,7 @@ class AssetClass(str, Enum):
 
     CRYPTO = "crypto"
     INDIAN_STOCK = "indian_stock"
+    US_STOCK = "us_stock"
 
 
 class Candle(BaseModel):

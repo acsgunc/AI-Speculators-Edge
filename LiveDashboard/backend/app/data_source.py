@@ -280,10 +280,113 @@ class YFinanceSource(DataSource):
         self, symbol: str, interval: str, limit: int | None = None
     ) -> list[Candle]:
         """Blocking yfinance fetch executed inside a worker thread."""
-        import yfinance as yf  # imported lazily to keep startup fast
+        import requests
 
+        # Use direct API calls to bypass yfinance proxy issues
+        try:
+            return self._fetch_via_api(symbol, interval, limit)
+        except Exception:
+            # Fallback to yfinance if API fails
+            try:
+                import yfinance as yf
+                return self._fetch_via_yfinance(symbol, interval, limit, yf)
+            except Exception:
+                return []
+
+    def _fetch_via_api(
+        self, symbol: str, interval: str, limit: int | None = None
+    ) -> list[Candle]:
+        """Fetch data directly from Yahoo Finance API."""
+        import requests
+        from datetime import datetime, timedelta
+        
+        # Convert interval to yfinance format for API call
         yf_interval = self._INTERVAL_MAP[interval]
         period = self._PERIOD_MAP[interval]
+        
+        # Calculate date range
+        end_date = datetime.now()
+        if period == "5d":
+            start_date = end_date - timedelta(days=5)
+        elif period == "1mo":
+            start_date = end_date - timedelta(days=30)
+        elif period == "3mo":
+            start_date = end_date - timedelta(days=90)
+        elif period == "2y":
+            start_date = end_date - timedelta(days=730)
+        else:
+            start_date = end_date - timedelta(days=730)
+        
+        # Use public API endpoint
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol
+        params = {
+            "interval": yf_interval,
+            "period1": int(start_date.timestamp()),
+            "period2": int(end_date.timestamp()),
+        }
+        
+        # Use direct requests to avoid proxy issues
+        session = requests.Session()
+        session.trust_env = False  # Ignore environment proxy settings
+        
+        try:
+            resp = session.get(url, params=params, timeout=10.0)
+            # Don't raise on 429 (rate limit) - let it fail gracefully to yfinance fallback
+            if resp.status_code == 429:
+                return []
+            resp.raise_for_status()
+        except requests.RequestException:
+            # Network error - fall through to raise and trigger fallback
+            raise
+            
+        data = resp.json()
+        
+        if not data.get("chart") or not data["chart"].get("result"):
+            return []
+        
+        result = data["chart"]["result"][0]
+        timestamps = result.get("timestamp", [])
+        quotes = result.get("indicators", {}).get("quote", [{}])[0]
+        
+        candles: list[Candle] = []
+        for ts, open_val, high, low, close_val, volume in zip(
+            timestamps,
+            quotes.get("open", []),
+            quotes.get("high", []),
+            quotes.get("low", []),
+            quotes.get("close", []),
+            quotes.get("volume", []),
+        ):
+            if open_val is None or close_val is None:
+                continue
+            candles.append(
+                Candle(
+                    time=int(ts),
+                    open=float(open_val),
+                    high=float(high) if high is not None else float(open_val),
+                    low=float(low) if low is not None else float(open_val),
+                    close=float(close_val),
+                    volume=float(volume) if volume is not None else 0.0,
+                )
+            )
+        
+        candles.sort(key=lambda c: c.time)
+        return candles[-limit:] if limit else candles
+
+    def _fetch_via_yfinance(
+        self, symbol: str, interval: str, limit: int | None = None, yf=None
+    ) -> list[Candle]:
+        """Fallback to yfinance with custom session to disable proxy."""
+        import requests
+        
+        yf_interval = self._INTERVAL_MAP[interval]
+        period = self._PERIOD_MAP[interval]
+        
+        # Create session that ignores environment proxies
+        session = requests.Session()
+        session.trust_env = False
+        session.proxies = {}
+        
         frame = yf.download(
             tickers=symbol,
             period=period,
@@ -291,6 +394,7 @@ class YFinanceSource(DataSource):
             auto_adjust=False,
             progress=False,
             threads=False,
+            session=session,
         )
         if frame is None or frame.empty:
             return []
@@ -316,9 +420,231 @@ class YFinanceSource(DataSource):
         return candles[-limit:] if limit else candles
 
 
-# ---------------------------------------------------------------------------
-# Registry & resolution
-# ---------------------------------------------------------------------------
+class USStockSource(DataSource):
+    """US equities sourced from Yahoo Finance through ``yfinance``.
+
+    Similar to YFinanceSource, ``yfinance`` is synchronous and offers no
+    streaming socket, so blocking calls are off-loaded to a thread pool and
+    live behaviour is emulated by polling.
+    """
+
+    name = "yfinance_us"
+    asset_class = AssetClass.US_STOCK
+
+    # Popular US stocks from different sectors.
+    _SYMBOLS: dict[str, str] = {
+        "AAPL": "Apple",
+        "MSFT": "Microsoft",
+        "GOOGL": "Alphabet",
+        "AMZN": "Amazon",
+        "TSLA": "Tesla",
+        "META": "Meta Platforms",
+        "NVDA": "NVIDIA",
+        "JPM": "JPMorgan Chase",
+        "V": "Visa",
+        "JNJ": "Johnson & Johnson",
+        "^GSPC": "S&P 500 Index",
+        "^IXIC": "NASDAQ-100 Index",
+        "^DJI": "Dow Jones Index",
+    }
+
+    # Map our canonical intervals onto the values yfinance understands.
+    _INTERVAL_MAP: dict[str, str] = {
+        "1m": "1m",
+        "5m": "5m",
+        "15m": "15m",
+        "1h": "60m",
+        "1d": "1d",
+    }
+
+    # yfinance enforces a maximum look-back per interval for intraday data.
+    _PERIOD_MAP: dict[str, str] = {
+        "1m": "5d",
+        "5m": "1mo",
+        "15m": "1mo",
+        "1h": "3mo",
+        "1d": "2y",
+    }
+
+    def list_symbols(self) -> list[SymbolInfo]:
+        return [
+            SymbolInfo(
+                symbol=sym,
+                label=name,
+                asset_class=self.asset_class,
+                provider=self.name,
+            )
+            for sym, name in self._SYMBOLS.items()
+        ]
+
+    def supports(self, symbol: str) -> bool:
+        return symbol in self._SYMBOLS
+
+    async def get_history(self, symbol: str, interval: str) -> list[Candle]:
+        interval = normalize_interval(interval)
+        return await asyncio.to_thread(self._fetch_history_sync, symbol, interval)
+
+    async def stream(self, symbol: str, interval: str) -> AsyncIterator[dict]:
+        interval = normalize_interval(interval)
+        last_time: int | None = None
+        while True:
+            try:
+                candles = await asyncio.to_thread(
+                    self._fetch_history_sync, symbol, interval, 2
+                )
+                if candles:
+                    latest = candles[-1]
+                    # Emit the freshest candle plus a tick for the price flash.
+                    yield {"kind": "candle", "candle": latest}
+                    if last_time != latest.time:
+                        last_time = latest.time
+                    yield {"kind": "tick", "price": latest.close, "time": latest.time}
+            except Exception:  # noqa: BLE001 - polling must never crash the stream
+                pass
+            await asyncio.sleep(self.settings.poll_interval_seconds)
+
+    def _fetch_history_sync(
+        self, symbol: str, interval: str, limit: int | None = None
+    ) -> list[Candle]:
+        """Blocking yfinance fetch executed inside a worker thread."""
+        import requests
+
+        # Use direct API calls to bypass yfinance proxy issues
+        try:
+            return self._fetch_via_api(symbol, interval, limit)
+        except Exception:
+            # Fallback to yfinance if API fails
+            try:
+                import yfinance as yf
+                return self._fetch_via_yfinance(symbol, interval, limit, yf)
+            except Exception:
+                return []
+
+    def _fetch_via_api(
+        self, symbol: str, interval: str, limit: int | None = None
+    ) -> list[Candle]:
+        """Fetch data directly from Yahoo Finance API."""
+        import requests
+        from datetime import datetime, timedelta
+        
+        # Convert interval to yfinance format for API call
+        yf_interval = self._INTERVAL_MAP[interval]
+        period = self._PERIOD_MAP[interval]
+        
+        # Calculate date range
+        end_date = datetime.now()
+        if period == "5d":
+            start_date = end_date - timedelta(days=5)
+        elif period == "1mo":
+            start_date = end_date - timedelta(days=30)
+        elif period == "3mo":
+            start_date = end_date - timedelta(days=90)
+        elif period == "2y":
+            start_date = end_date - timedelta(days=730)
+        else:
+            start_date = end_date - timedelta(days=730)
+        
+        # Use public API endpoint
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol
+        params = {
+            "interval": yf_interval,
+            "period1": int(start_date.timestamp()),
+            "period2": int(end_date.timestamp()),
+        }
+        
+        # Use direct requests to avoid proxy issues
+        session = requests.Session()
+        session.trust_env = False  # Ignore environment proxy settings
+        
+        try:
+            resp = session.get(url, params=params, timeout=10.0)
+            # Don't raise on 429 (rate limit) - let it fail gracefully to yfinance fallback
+            if resp.status_code == 429:
+                return []
+            resp.raise_for_status()
+        except requests.RequestException:
+            # Network error - fall through to raise and trigger fallback
+            raise
+            
+        data = resp.json()
+        
+        if not data.get("chart") or not data["chart"].get("result"):
+            return []
+        
+        result = data["chart"]["result"][0]
+        timestamps = result.get("timestamp", [])
+        quotes = result.get("indicators", {}).get("quote", [{}])[0]
+        
+        candles: list[Candle] = []
+        for ts, open_val, high, low, close_val, volume in zip(
+            timestamps,
+            quotes.get("open", []),
+            quotes.get("high", []),
+            quotes.get("low", []),
+            quotes.get("close", []),
+            quotes.get("volume", []),
+        ):
+            if open_val is None or close_val is None:
+                continue
+            candles.append(
+                Candle(
+                    time=int(ts),
+                    open=float(open_val),
+                    high=float(high) if high is not None else float(open_val),
+                    low=float(low) if low is not None else float(open_val),
+                    close=float(close_val),
+                    volume=float(volume) if volume is not None else 0.0,
+                )
+            )
+        
+        candles.sort(key=lambda c: c.time)
+        return candles[-limit:] if limit else candles
+
+    def _fetch_via_yfinance(
+        self, symbol: str, interval: str, limit: int | None = None, yf=None
+    ) -> list[Candle]:
+        """Fallback to yfinance with custom session to disable proxy."""
+        import requests
+        
+        yf_interval = self._INTERVAL_MAP[interval]
+        period = self._PERIOD_MAP[interval]
+        
+        # Create session that ignores environment proxies
+        session = requests.Session()
+        session.trust_env = False
+        session.proxies = {}
+        
+        frame = yf.download(
+            tickers=symbol,
+            period=period,
+            interval=yf_interval,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+            session=session,
+        )
+        if frame is None or frame.empty:
+            return []
+
+        # yfinance returns a MultiIndex column frame for single tickers in
+        # recent versions; flatten it defensively.
+        if hasattr(frame.columns, "nlevels") and frame.columns.nlevels > 1:
+            frame.columns = frame.columns.get_level_values(0)
+
+        candles: list[Candle] = []
+        for ts, row in frame.iterrows():
+            candles.append(
+                Candle(
+                    time=int(ts.timestamp()),
+                    open=float(row["Open"]),
+                    high=float(row["High"]),
+                    low=float(row["Low"]),
+                    close=float(row["Close"]),
+                    volume=float(row.get("Volume", 0.0) or 0.0),
+                )
+            )
+        candles.sort(key=lambda c: c.time)
+        return candles[-limit:] if limit else candles
 
 
 def _build_registry(settings: Settings) -> list[DataSource]:
@@ -330,6 +656,7 @@ def _build_registry(settings: Settings) -> list[DataSource]:
     return [
         HyperliquidSource(settings),
         YFinanceSource(settings),
+        USStockSource(settings),
     ]
 
 
