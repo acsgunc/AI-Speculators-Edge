@@ -107,6 +107,27 @@ curl http://localhost:8000/api/symbols | jq '.us_stock | map(.symbol)'
 # 3. Check history endpoint (may be empty in sandbox, works in production)
 curl "http://localhost:8000/api/history?symbol=AAPL&interval=1d"
 # Expected: {"symbol":"AAPL","interval":"1d","candles":[...]}
+
+# NOTE: If you get {"candles":[]} - Yahoo Finance is rate limiting (429 error)
+# This is normal during testing. Wait 2-5 minutes and retry, or use mock data (see below)
+```
+
+### Mock Data for Testing (No Rate Limits)
+If real data hits rate limits, use mock data for development:
+```bash
+cd backend
+
+# Test with mock data
+python3 << 'EOF'
+from mock_data import MockStockSource
+
+mock = MockStockSource()
+candles = mock.fetch_history_sync('AAPL', '1d', limit=10)
+print(f"Mock data: {len(candles)} candles for AAPL")
+for candle in candles[-3:]:
+    print(f"  {candle}")
+EOF
+```
 ```
 
 ### Frontend Testing
@@ -139,6 +160,40 @@ python3 debug_data_fetch.py
 ---
 
 ## If US Stocks Still Don't Appear
+
+### Issue: Empty Candles Array `{"candles":[]}`
+
+**Cause**: Yahoo Finance rate limiting (429 error)
+
+**Why this happens**: Testing repeatedly or running multiple requests triggers rate limiting. This is **normal and expected** during development.
+
+**Solutions**:
+
+**Option 1: Wait for Rate Limit Reset** (2-5 minutes)
+```bash
+# Just wait and retry
+sleep 180
+curl "http://localhost:8000/api/history?symbol=AAPL&interval=1d"
+```
+
+**Option 2: Use Mock Data** (Instant, No Rate Limits)
+```bash
+cd backend
+
+# Create mock data provider
+python3 << 'EOF'
+from mock_data import MockStockSource
+
+mock = MockStockSource()
+candles = mock.fetch_history_sync('AAPL', '1d', limit=20)
+print(f"✅ Generated {len(candles)} candles (no rate limit!)")
+EOF
+```
+
+**Option 3: Test in Production** (Where Rate Limits Reset Faster)
+Deploy to Render and test there - the rate limit should reset within minutes.
+
+---
 
 ### Step 1: Check API is Running
 ```bash
