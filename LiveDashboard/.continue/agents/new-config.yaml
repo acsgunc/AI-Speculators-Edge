@@ -1,0 +1,41 @@
+name: Local Ollama Agent Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: Qwen 2.5 Coder 14B (Primary Agent)
+    provider: ollama
+    model: qwen2.5-coder:14b
+    apiBase: http://localhost:11434
+    capabilities:
+      - tool_use
+    roles:
+      - chat
+      - edit
+      - apply
+
+  - name: DeepSeek R1 14B (Complex Reasoning)
+    provider: ollama
+    model: deepseek-r1:14b
+    apiBase: http://localhost:11434
+    capabilities:
+      - tool_use
+    roles:
+      - chat
+      - edit
+
+  - name: Gemma 4 12B (Fast Chat)
+    provider: ollama
+    model: gemma4:12b
+    apiBase: http://localhost:11434
+    roles:
+      - chat
+      - edit
+      - apply
+
+# Using Qwen's 14B model for rich, context-aware inline tab completions
+tabAutocompleteModel:
+  name: Qwen 2.5 Coder 14B Autocomplete
+  provider: ollama
+  model: qwen2.5-coder:14b
+  apiBase: http://localhost:11434
